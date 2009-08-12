@@ -26,6 +26,7 @@ but does things differently:
  This plugin was developed by benglynn
  
  */
+ 
 /*jslint browser: true, rhino: true, newcap: true */
  /*globals jQuery, escape */
  
@@ -40,10 +41,6 @@ but does things differently:
 		C.prototype = superclass.prototype;
 		this.prototype = new C();	
 	};
-
-	/*
-	Private
-	*/
 	
 	// Default properties
 	var defaultOptions = {
@@ -56,14 +53,24 @@ but does things differently:
 		this.name = name;
 		this.urlSchemeStart = urlSchemeStart;
 	}
-	// Retrun true if the providerhandles the passed url, false otherwise
+	// Retrun true if the provider handles the passed url, false otherwise
 	Provider.prototype.handlesUrl = function(url) {
 		return url.indexOf(this.urlSchemeStart) === 0;
 	};
-	// Return the ajax request url
-	Provider.prototype.convertToRequest = function(url) {
-		return 'http://oohembed.com/oohembed/?url=' + escape(url) + '&format=json&maxWidth=' + defaultOptions.maxWidth + '&maxHeight=' + defaultOptions.maxHeight;
-	};
+	// Embed media in place of an anchor
+	Provider.prototype.embedLink = function(anchor) {
+		var requestUrl = 'http://oohembed.com/oohembed/' +
+			'?url=' + escape(anchor.attr('href')) + 
+			'&format=json&maxWidth=' + defaultOptions.maxWidth + 
+			'&maxHeight=' + defaultOptions.maxHeight + 
+			'&callback=?';
+		$.getJSON(requestUrl, this.onJson);
+	}
+	// Handle data returned from a request
+	Provider.prototype.onJson = function(data) {
+		console.log('Abstract Provider onJson:');
+		console.log(data);
+	}
 	
 	// ImageProvider class
 	function ImageProvider(name, urlSchemeStart) {
@@ -93,22 +100,6 @@ but does things differently:
 		return null;
 	};
 	
-	// Get a CSS path for links to all supported media
-	var getLinksCssPath = function() {
-		var cssPath = '';
-		$.each(providers, function(i, provider) {
-			cssPath += 'a[href^=' + provider.urlSchemeStart + ']';
-			if(i < providers.length - 1) {
-				cssPath += ',';
-			}
-		});
-		return cssPath;
-	};
-	
-	/*
-	Private methods
-	*/
-	
 	/*
 	Plugin, called with eg: $('a').embedLinks()
 	*/
@@ -120,15 +111,8 @@ but does things differently:
 			if(this.nodeName === 'A') {
 				var anchor = $(this);
 				var provider = getProvider(anchor.attr('href'));
-				if(provider !== null) {				
-					anchor.css('border', '5px solid pink');
-					// Get the request for this anchor's media's JSON, and add '&callback=?' to make
-					//a JSONP request
-					var request = provider.convertToRequest(anchor.attr('href')) + '&callback=?';
-					$.getJSON(request, function(data) {
-						console.log(data);
-					});
-					
+				if(provider !== null) {
+					provider.embedLink(anchor);
 				}
 			}
 		});
@@ -138,9 +122,15 @@ but does things differently:
 	/*
 	Function, called with $.emedLinks([options])
 	*/
-	$.embedLinks = function(newOptions) {
-		var options = $.extend({}, defaultOptions, newOptions);
-		$(getLinksCssPath()).embedLinks(options);
+	$.embedLinks = function(options) {
+		var cssPath = '';
+		$.each(providers, function(i, provider) {
+			cssPath += 'a[href^=' + provider.urlSchemeStart + ']';
+			if(i < providers.length - 1) {
+				cssPath += ',';
+			}
+		});
+		$(cssPath).embedLinks(options);
 	};
 })(jQuery);
 
