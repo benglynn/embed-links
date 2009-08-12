@@ -26,16 +26,32 @@ but does things differently:
  This plugin was developed by benglynn
  
  */
- 
- /*globals jQuery */
+/*jslint browser: true, rhino: true, newcap: true */
+ /*globals jQuery, escape */
  
 
 (function($) {
 
 	/*
+	Prototype subclassing utility TODO use function based inheritance to do this
+	*/
+	Function.prototype.extend = function(superclass) {
+		var C = function() {};
+		C.prototype = superclass.prototype;
+		this.prototype = new C();	
+	};
+
+	/*
 	Private
 	*/
 	
+	// Default properties
+	var defaultOptions = {
+		maxWidth: 500,
+		maxHeight: 400
+	};
+	
+	// Abstract Provider class 
 	function Provider(name, urlSchemeStart) {
 		this.name = name;
 		this.urlSchemeStart = urlSchemeStart;
@@ -47,12 +63,24 @@ but does things differently:
 	// Return the ajax request url
 	Provider.prototype.convertToRequest = function(url) {
 		return 'http://oohembed.com/oohembed/?url=' + escape(url) + '&format=json&maxWidth=' + defaultOptions.maxWidth + '&maxHeight=' + defaultOptions.maxHeight;
+	};
+	
+	// ImageProvider class
+	function ImageProvider(name, urlSchemeStart) {
+		Provider.call(this, name, urlSchemeStart);
 	}
+	ImageProvider.extend(Provider);
+	
+	// VideoProvider class
+	function VideoProvider(name, urlSchemeStart) {
+		Provider.call(this, name, urlSchemeStart);
+	}
+	VideoProvider.extend(Provider);
 	
 	// Provider instances
 	var providers = [
-		new Provider('YouTube', 'http://www.youtube.com/watch?v='),
-		new Provider('flickr', 'http://www.flickr.com/photos/')
+		new VideoProvider('YouTube', 'http://www.youtube.com/watch?v='),
+		new ImageProvider('flickr', 'http://www.flickr.com/photos/')
 	];
 	
 	// Match a provider to the passed url
@@ -65,10 +93,16 @@ but does things differently:
 		return null;
 	};
 	
-	// Default properties
-	var defaultOptions = {
-		maxWidth: 500,
-		maxHeight: 400
+	// Get a CSS path for links to all supported media
+	var getLinksCssPath = function() {
+		var cssPath = '';
+		$.each(providers, function(i, provider) {
+			cssPath += 'a[href^=' + provider.urlSchemeStart + ']';
+			if(i < providers.length - 1) {
+				cssPath += ',';
+			}
+		});
+		return cssPath;
 	};
 	
 	/*
@@ -76,16 +110,16 @@ but does things differently:
 	*/
 	
 	/*
-	Plugin, called with eg: $('[a]').embedLinks([options])
+	Plugin, called with eg: $('a').embedLinks()
 	*/
 	$.fn.embedLinks = function(newOptions) {
 	
-		var options = $.extend({}, defaultOptions, newOptions);
+		//var options = $.extend({}, defaultOptions, newOptions);
 	
 		return this.each(function() {
 			if(this.nodeName === 'A') {
 				var anchor = $(this);
-				var provider = getProvider(anchor.attr('href'))
+				var provider = getProvider(anchor.attr('href'));
 				if(provider !== null) {				
 					anchor.css('border', '5px solid pink');
 					// Get the request for this anchor's media's JSON, and add '&callback=?' to make
@@ -105,13 +139,9 @@ but does things differently:
 	Function, called with $.emedLinks([options])
 	*/
 	$.embedLinks = function(newOptions) {
-	
 		var options = $.extend({}, defaultOptions, newOptions);
-	
+		$(getLinksCssPath()).embedLinks(options);
 	};
-	
-	
-
 })(jQuery);
 
 
