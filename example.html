@@ -7,7 +7,12 @@
 		<script type="text/javascript" src="jquery.embedlinks.js"></script>
 		<script type="text/javascript">
 			$(document).ready(function() {
-				//$('a[href^=http://www.flickr.com],a[href^=http://www.youtube.com/watch?v=]').embedLinks();
+				/*
+				$('a[href^=http://www.flickr.com]').click(function(event){
+					event.preventDefault();
+					$(this).embedLinks();
+				});
+				*/
 				$.embedLinks();
 			});
 		</script>

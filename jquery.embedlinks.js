@@ -49,14 +49,16 @@ but does things differently:
 	};
 	
 	// Abstract Provider class 
-	function Provider(name, urlSchemeStart) {
+	function Provider(urlSchemeStart) {
 		this.name = name;
 		this.urlSchemeStart = urlSchemeStart;
 	}
+	
 	// Retrun true if the provider handles the passed url, false otherwise
 	Provider.prototype.handlesUrl = function(url) {
 		return url.indexOf(this.urlSchemeStart) === 0;
 	};
+	
 	// Embed media in place of an anchor
 	Provider.prototype.embedLink = function(anchor) {
 		var requestUrl = 'http://oohembed.com/oohembed/' +
@@ -64,30 +66,42 @@ but does things differently:
 			'&format=json&maxWidth=' + defaultOptions.maxWidth + 
 			'&maxHeight=' + defaultOptions.maxHeight + 
 			'&callback=?';
-		$.getJSON(requestUrl, this.onJson);
+		var provider = this;
+		$.getJSON(requestUrl, function(data) {
+			provider.onJson(data, anchor);
+		});
 	}
+	
 	// Handle data returned from a request
-	Provider.prototype.onJson = function(data) {
+	Provider.prototype.onJson = function(data, anchor) {
 		console.log('Abstract Provider onJson:');
 		console.log(data);
 	}
 	
 	// ImageProvider class
-	function ImageProvider(name, urlSchemeStart) {
-		Provider.call(this, name, urlSchemeStart);
+	function ImageProvider(urlSchemeStart) {
+		Provider.call(this, urlSchemeStart);
 	}
+	
 	ImageProvider.extend(Provider);
 	
-	// VideoProvider class
-	function VideoProvider(name, urlSchemeStart) {
-		Provider.call(this, name, urlSchemeStart);
+	ImageProvider.prototype.onJson = function(data, anchor) {
+		anchor.replaceWith(
+			'<img width="' + data.width + '" height="' + data.height + '" src="' + data.url + '"/>'
+		);
 	}
+	
+	// VideoProvider class
+	function VideoProvider(urlSchemeStart) {
+		Provider.call(this, urlSchemeStart);
+	}
+	
 	VideoProvider.extend(Provider);
 	
 	// Provider instances
 	var providers = [
-		new VideoProvider('YouTube', 'http://www.youtube.com/watch?v='),
-		new ImageProvider('flickr', 'http://www.flickr.com/photos/')
+		new VideoProvider('http://www.youtube.com/watch?v='),
+		new ImageProvider('http://www.flickr.com/photos/')
 	];
 	
 	// Match a provider to the passed url
@@ -126,6 +140,7 @@ but does things differently:
 		var cssPath = '';
 		$.each(providers, function(i, provider) {
 			cssPath += 'a[href^=' + provider.urlSchemeStart + ']';
+			console.log(cssPath);
 			if(i < providers.length - 1) {
 				cssPath += ',';
 			}
