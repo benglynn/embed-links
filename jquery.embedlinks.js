@@ -9,32 +9,40 @@ Replaces anchors pointing to certain media with embedded media. The media must b
 proider that supports the oEmbed format http://www.oembed.com/, as the provider is queried via an 
 ajax request to glean the necessary data.
 
-This plugin was inspired by the jquery.oembed plugin http://plugins.jquery.com/project/jquery-oembed 
-but does things differently:
-
  * The raw html returned by the provider is not used directly, html is consturcted from the 
    metadata.
  
  * Where Flash is required, SWFObject http://code.google.com/p/swfobject/ is used to perform Flash 
    detection and embed the media.
+   
+ * If Flash is unavailable (either because SWFObject is unavailable of because the system does not
+   have Flash -- iPhone for example) then the video's thumbnail (if available) is wrapped in a link
+   to the video on the provider's site.
 
  * A function is available which will identify anchors pointing to supported media. (Alternatively, 
    oembed can be called on a jQuery object.)
  
  * The code passes the JSLint code quality tool http://www.jslint.com/
  
- This plugin was developed by benglynn
+ This plugin was developed by benglynn, the oEmbed ajax inspired by the jquery.oembed plugin
+ http://plugins.jquery.com/project/jquery-oembed
  
  */
  
 /*jslint browser: true, rhino: true, newcap: true */
- /*globals jQuery, escape */
+ /*globals jQuery, window, escape */
  
 
 (function($) {
 
+	var log = function() {
+		if(window.console) {
+			console.log.apply(this, arguments);
+		}
+	};
+
 	/*
-	Prototype subclassing utility TODO use function based inheritance to do this
+	Prototype subclassing
 	*/
 	Function.prototype.extend = function(superclass) {
 		var C = function() {};
@@ -70,13 +78,12 @@ but does things differently:
 		$.getJSON(requestUrl, function(data) {
 			provider.onJson(data, anchor);
 		});
-	}
+	};
 	
 	// Handle data returned from a request
 	Provider.prototype.onJson = function(data, anchor) {
-		console.log('Abstract Provider onJson:');
-		console.log(data);
-	}
+		log(data);
+	};
 	
 	// ImageProvider class
 	function ImageProvider(urlSchemeStart) {
@@ -89,7 +96,7 @@ but does things differently:
 		anchor.replaceWith(
 			'<img width="' + data.width + '" height="' + data.height + '" src="' + data.url + '"/>'
 		);
-	}
+	};
 	
 	// VideoProvider class
 	function VideoProvider(urlSchemeStart) {
@@ -100,7 +107,11 @@ but does things differently:
 	
 	// Provider instances
 	var providers = [
+		// YouTube
 		new VideoProvider('http://www.youtube.com/watch?v='),
+		// Vimeo
+		new VideoProvider('http://vimeo.com/'),
+		// flickr
 		new ImageProvider('http://www.flickr.com/photos/')
 	];
 	
@@ -140,7 +151,6 @@ but does things differently:
 		var cssPath = '';
 		$.each(providers, function(i, provider) {
 			cssPath += 'a[href^=' + provider.urlSchemeStart + ']';
-			console.log(cssPath);
 			if(i < providers.length - 1) {
 				cssPath += ',';
 			}
