@@ -1,8 +1,6 @@
 /*
 
 About
-=====
-
 WORK IN PROGRESS
 
 Replaces anchors pointing to certain media with embedded media. The media must be hosted with a 
@@ -34,32 +32,35 @@ ajax request to glean the necessary data.
  
 
 (function($) {
-
-	var log = function() {
-		if(window.console) {
-			console.log.apply(this, arguments);
-		}
-	};
-
-	/*
-	Prototype subclassing
-	*/
-	Function.prototype.extend = function(superclass) {
-		var C = function() {};
-		C.prototype = superclass.prototype;
-		this.prototype = new C();	
-	};
 	
 	// Default properties
 	var defaultOptions = {
-		maxWidth: 500,
-		maxHeight: 400
+		maxwidth: 500,
+		maxheight: 400
 	};
+
+	// Utility to extend a class
+	function extend(SuperCon, SubCon) {
+		SubCon.prototype = new SuperCon();
+		SubCon.prototype.super_ = SuperCon.prototype;
+	}
+
+	// log checks for existance of console
+	function log() {
+		// Firebug can handle multiple arguments
+		if(window.console && navigator.userAgent.match(/Firefox/) !== null) {
+			console.log.apply(this, arguments);
+		}
+		// Webkit must have one string
+		else if(window.console) {
+			console.log(arguments[0].toString());
+		}
+	}
 	
-	// Abstract Provider class 
+	// Provider class 
 	function Provider(urlSchemeStart) {
-		this.name = name;
 		this.urlSchemeStart = urlSchemeStart;
+		this.apiEndPoint = 'http://oohembed.com/oohembed/';
 	}
 	
 	// Retrun true if the provider handles the passed url, false otherwise
@@ -68,14 +69,17 @@ ajax request to glean the necessary data.
 	};
 	
 	// Embed media in place of an anchor
-	Provider.prototype.embedLink = function(anchor) {
-		var requestUrl = 'http://oohembed.com/oohembed/' +
+	Provider.prototype.embedLink = function(anchor, newOptions) {
+		var options = $.extend({}, defaultOptions, newOptions);
+		
+		var url = this.apiEndPoint +
 			'?url=' + escape(anchor.attr('href')) + 
-			'&format=json&maxWidth=' + defaultOptions.maxWidth + 
-			'&maxHeight=' + defaultOptions.maxHeight + 
+			'&format=json&maxwidth=' + options.maxwidth + 
+			'&maxheight=' + options.maxheight + 
 			'&callback=?';
+			
 		var provider = this;
-		$.getJSON(requestUrl, function(data) {
+		$.getJSON(url, function(data) {
 			provider.onJson(data, anchor);
 		});
 	};
@@ -85,25 +89,36 @@ ajax request to glean the necessary data.
 		log(data);
 	};
 	
-	// ImageProvider class
-	function ImageProvider(urlSchemeStart) {
+	// Flickr extends Provider
+	function Flickr(urlSchemeStart) {
 		Provider.call(this, urlSchemeStart);
+		//this.apiEndPoint = 'http://flickr.com/services/oembed/';
 	}
+	extend(Provider, Flickr);
 	
-	ImageProvider.extend(Provider);
-	
-	ImageProvider.prototype.onJson = function(data, anchor) {
+	Flickr.prototype.onJson = function(data, anchor) {
+		this.super_.onJson.call(this, data, anchor);
 		anchor.replaceWith(
 			'<img width="' + data.width + '" height="' + data.height + '" src="' + data.url + '"/>'
 		);
 	};
 	
-	// VideoProvider class
+	// VideoProvider extends Provider
 	function VideoProvider(urlSchemeStart) {
 		Provider.call(this, urlSchemeStart);
 	}
+	extend(Provider, VideoProvider);
 	
-	VideoProvider.extend(Provider);
+	
+	VideoProvider.prototype.onJson = function(data, anchor) {
+		this.super_.onJson.call(this, data, anchor);
+		var href = anchor.attr('href');
+		anchor.replaceWith(
+			'<a href="' + href + '">' +
+			'<img width="' + data.width + '" height="' + data.height + '" src="' + data.thumbnail_url + '"/>' +
+			'</a>'
+		);
+	};
 	
 	// Provider instances
 	var providers = [
@@ -112,7 +127,7 @@ ajax request to glean the necessary data.
 		// Vimeo
 		new VideoProvider('http://vimeo.com/'),
 		// flickr
-		new ImageProvider('http://www.flickr.com/photos/')
+		new Flickr('http://www.flickr.com/photos/')
 	];
 	
 	// Match a provider to the passed url
@@ -126,18 +141,16 @@ ajax request to glean the necessary data.
 	};
 	
 	/*
-	Plugin, called with eg: $('a').embedLinks()
+	Plugin
 	*/
-	$.fn.embedLinks = function(newOptions) {
-	
-		//var options = $.extend({}, defaultOptions, newOptions);
+	$.fn.embedLinks = function(options) {
 	
 		return this.each(function() {
 			if(this.nodeName === 'A') {
 				var anchor = $(this);
 				var provider = getProvider(anchor.attr('href'));
 				if(provider !== null) {
-					provider.embedLink(anchor);
+					provider.embedLink(anchor, options);
 				}
 			}
 		});
@@ -158,13 +171,6 @@ ajax request to glean the necessary data.
 		$(cssPath).embedLinks(options);
 	};
 })(jQuery);
-
-
-
-
-
-
-
 
 
 
