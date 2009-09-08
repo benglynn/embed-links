@@ -157,16 +157,17 @@ etc.
 	}
 	extend(Provider, VideoProvider);
 	
+	// Specialises parseData to look for thumbnail_url
+	VideoProvider.prototype.parseData = function(data) {
+		var parsedData = this.super_.parseData.call(this, data);
+		parsedData.thumbnail_url = data.thumbnail_url;
+		return parsedData;
+	}
 	
-	VideoProvider.prototype.onJson = function(data, anchor) {
-		this.super_.onJson.call(this, data, anchor);
-		// todo: sanity check data
-		// todo, why not use existing anchor
-		var href = anchor.attr('href');
-		anchor.replaceWith(
-			'<a href="' + href + '">' +
-			'<img width="' + data.width + '" height="' + data.height + '" src="' + data.thumbnail_url + '"/>' +
-			'</a>'
+	// Video specialised render
+	VideoProvider.prototype.render = function(parsedData, anchor) {
+		anchor.html(
+			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>'
 		);
 	};
 	
