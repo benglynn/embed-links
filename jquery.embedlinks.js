@@ -32,15 +32,15 @@ as the provider is queried via an ajax request to glean the necessary data.
  /*globals jQuery, swfobject, window, escape */
 
 /*
-Todo: Redo matching of oembed formats. Deal with different url schemes, e.g:
-http://flickr.com/photos vs http://www.flickr.com/photos, or no trailing slash
+Todo: Providers to have an additional param with less amiguous url scheme, to 
+test against hrefs and reduce unnecessay requests
 etc.
 */
 
 (function($) {
 
 	// Constants
-	var FLASH_VERSION_REQUIRED = "8.0.0";
+	var FLASH_VERSION_REQUIRED = "9.0.0";
 	
 	// Default properties
 	var defaultOptions = {
@@ -124,13 +124,13 @@ etc.
 	Provider.prototype.onJson = function(data, anchor) {
 		var parsedData = this.parseData(data);
 		if(this.validateData(parsedData)) {
-			this.render(parsedData, anchor);
+			this.render(parsedData, anchor, data);
 		}
 		return parsedData;
 	};
 	
-	Provider.prototype.render = function(parsedData, anchor) {
-		console.log(parsedData);
+	Provider.prototype.render = function(parsedData, anchor, data) {
+		//log(parsedData);
 	};
 	
 	// Flickr extends Provider
@@ -148,7 +148,7 @@ etc.
 	};
 	
 	// Specialise render to show image
-	Flickr.prototype.render = function(parsedData, anchor) {
+	Flickr.prototype.render = function(parsedData, anchor, data) {
 		anchor.replaceWith(
 			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.url + '"/>'
 		);
@@ -164,23 +164,36 @@ etc.
 	VideoProvider.prototype.parseData = function(data) {
 		var parsedData = this.super_.parseData.call(this, data);
 		
-		parsedData.thumbnail_url = data.thumbnail_url;
 		parsedData.flashSrc = undefined;
 		
 		// If data has an html property and it is a Flash object/embed element
-		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/) !== null) {
+		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/i) !== null) {
 			// Set the flash src to be the src/data attribute
-			parsedData.flashSrc = data.html.match(/^<(?:object|embed).*?(?:src|data)=(?:"|')([^'"]*?)(?:"|')/)[1];
+			parsedData.flashSrc = data.html.match(/^<(?:object|embed).*?(?:src|data)=(?:"|')([^'"]*?)(?:"|')/i)[1];
 		}
 		return parsedData;
 	};
 	
 	// Video specialised render
-	VideoProvider.prototype.render = function(parsedData, anchor) {
+	VideoProvider.prototype.render = function(parsedData, anchor, data) {
+	
 		if(swfobject && swfobject.hasFlashPlayerVersion(FLASH_VERSION_REQUIRED)) {
+		
 			// Get reference to anchor id, create if necessary
 			var uid = anchor.attr('id') === '' ? Math.random().toString().replace(/^0\./,'jquery_embedlinks_') : anchor.attr('id');
 			anchor.attr('id', uid);
+			
+			// Extract any params found in the data
+			var extractedParams = {};
+			var paramTags = data.html.match(/<param name=(?:'|").*?(?:'|")\s+?value=(?:'|").*?(?:'|")/gi);
+			if(paramTags !== null) {
+				$.each(paramTags, function(i, paramTag) {
+					var matchedParamTag = paramTag.match(/<param name=(?:'|")(.*?)(?:'|")\s+?value=(?:'|")(.*?)(?:'|")/i);
+					extractedParams[matchedParamTag[1]] = matchedParamTag[2];
+				});
+			}
+			
+			// Embed the swf
 			swfobject.embedSWF(
 				parsedData.flashSrc, 
 				uid,
@@ -189,19 +202,18 @@ etc.
 				FLASH_VERSION_REQUIRED,
 				null,
 				null,
-				{
-					allowScriptAccess: "always",
-					allowfullscreen: "true"
-				},
+				extractedParams,
 				{id:uid + '_id'}
 			);
 		}
 		// If Flash is not available, anchor wraps thumbnail, at width and 
 		// height of movie
 		else {
-			anchor.html('<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>');
+			//anchor.html('<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>');
 		}
 	};
+	
+	
 	
 	// Provider instances
 	var providers = [
@@ -210,7 +222,9 @@ etc.
 		// Vimeo
 		new VideoProvider('http://vimeo.com/'),
 		// flickr
-		new Flickr('http://www.flickr.com/photos/')
+		new Flickr('http://www.flickr.com/photos/'),
+		// Qik
+		new VideoProvider('http://qik.com/')
 	];
 	
 	// Match a provider to the passed url
