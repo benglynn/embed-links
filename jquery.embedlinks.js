@@ -3,45 +3,55 @@
 About
 WORK IN PROGRESS
 
-Replaces anchors pointing to certain media with embedded media. The media must be hosted with a 
-proider that supports the oEmbed format http://www.oembed.com/, as the provider is queried via an 
-ajax request to glean the necessary data.
+Replaces anchors pointing to certain media with embedded media. The media must 
+be hosted with a proider that supports the oEmbed format http://www.oembed.com/, 
+as the provider is queried via an ajax request to glean the necessary data.
 
- * The raw html returned by the provider is not used directly, html is consturcted from the 
-   metadata.
+ * The raw html returned by the provider is not used directly, html is 
+ consturcted from the metadata.
  
- * Where Flash is required, SWFObject http://code.google.com/p/swfobject/ is used to perform Flash 
-   detection and embed the media.
+ * Where Flash is required, SWFObject http://code.google.com/p/swfobject/ is 
+ used to perform Flash detection and embed the media.
    
- * If Flash is unavailable (either because SWFObject is unavailable of because the system does not
-   have Flash -- iPhone for example) then the video's thumbnail (if available) is wrapped in a link
-   to the video on the provider's site.
+ * If Flash is unavailable (either because SWFObject is unavailable of because 
+ the system does not have Flash -- iPhone for example) then the video's 
+ thumbnail (if available) is wrapped in a link to the video on the provider's 
+ site.
 
- * A function is available which will identify anchors pointing to supported media. (Alternatively, 
-   oembed can be called on a jQuery object.)
+ * A function is available which will identify anchors pointing to supported 
+ media. (Alternatively, oembed can be called on a jQuery object.)
  
  * The code passes the JSLint code quality tool http://www.jslint.com/
  
- This plugin was developed by benglynn, the oEmbed ajax inspired by the jquery.oembed plugin
- http://plugins.jquery.com/project/jquery-oembed
+ This plugin was developed by benglynn, the oEmbed ajax inspired by the jquery.
+ oembed plugin http://plugins.jquery.com/project/jquery-oembed
  
  */
  
 /*jslint browser: true, rhino: true, newcap: true */
  /*globals jQuery, window, escape */
- 
+
+/*
+Todo: Redo matching of oembed formats. Deal with different url schemes, e.g:
+http://flickr.com/photos vs http://www.flickr.com/photos, or no trailing slash
+etc.
+*/
 
 (function($) {
+
+	// Constants
+	var FLASH_VERSION_REQUIRED = 8;
 	
 	// Default properties
 	var defaultOptions = {
-		maxwidth: 500,
-		maxheight: 400
+		maxwidth: 800,
+		maxheight: 800
 	};
 
 	// Utility to extend a class
 	function extend(SuperCon, SubCon) {
 		SubCon.prototype = new SuperCon();
+		// Superclass will be available as super_ in subclass
 		SubCon.prototype.super_ = SuperCon.prototype;
 	}
 
@@ -63,7 +73,7 @@ ajax request to glean the necessary data.
 		this.apiEndPoint = 'http://oohembed.com/oohembed/';
 	}
 	
-	// Retrun true if the provider handles the passed url, false otherwise
+	// Return true if the provider handles the passed url, false otherwise
 	Provider.prototype.handlesUrl = function(url) {
 		return url.indexOf(this.urlSchemeStart) === 0;
 	};
@@ -74,19 +84,45 @@ ajax request to glean the necessary data.
 		
 		var url = this.apiEndPoint +
 			'?url=' + escape(anchor.attr('href')) + 
-			'&format=json&maxwidth=' + options.maxwidth + 
+			'&format=json' + 
+			'&maxwidth=' + options.maxwidth + 
 			'&maxheight=' + options.maxheight + 
+			// jQuery changes ? for a jsonp callback
 			'&callback=?';
 			
 		var provider = this;
 		$.getJSON(url, function(data) {
+			// Callback
 			provider.onJson(data, anchor);
 		});
 	};
 	
+	// Populate passed object with properties in passed data object
+	Provider.prototype.parseData = function(data) {
+		var parsedData = {};
+		parsedData.width = parseInt(data.width);
+		parsedData.height = parseInt(data.height);
+		return parsedData;
+	}
+	
+	// Validate parsed data, failing on any NaN or empty string values
+	Provider.prototype.validateData = function(parsedData) {
+		for(var property in parsedData) {
+			var value = parsedData[property];
+			if(isNaN(value) || value === "") {
+				return false;
+			}
+		}
+		return true;
+	}
+	
 	// Handle data returned from a request
 	Provider.prototype.onJson = function(data, anchor) {
-		log(data);
+		var parsedData = this.parseData(data);
+		if(this.validateData(parsedData)) {
+			log(parsedData);
+		};
+		return parsedData;
 	};
 	
 	// Flickr extends Provider
@@ -96,11 +132,20 @@ ajax request to glean the necessary data.
 	}
 	extend(Provider, Flickr);
 	
+	// Flickr specialises parse data to look for the image url
+	Flickr.prototype.parseData = function(data) {
+		var parsedData = this.super_.parseData.call(this, data);
+		return parsedData;
+	}
+	
 	Flickr.prototype.onJson = function(data, anchor) {
-		this.super_.onJson.call(this, data, anchor);
-		anchor.replaceWith(
-			'<img width="' + data.width + '" height="' + data.height + '" src="' + data.url + '"/>'
-		);
+		var parsedData = this.super_.onJson.call(this, data, anchor);
+		if(this.validateData(parsedData)) {
+			anchor.replaceWith(
+				// Todo: sanity check data
+				'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + data.url + '"/>'
+			);
+		}
 	};
 	
 	// VideoProvider extends Provider
@@ -112,6 +157,8 @@ ajax request to glean the necessary data.
 	
 	VideoProvider.prototype.onJson = function(data, anchor) {
 		this.super_.onJson.call(this, data, anchor);
+		// todo: sanity check data
+		// todo, why not use existing anchor
 		var href = anchor.attr('href');
 		anchor.replaceWith(
 			'<a href="' + href + '">' +
