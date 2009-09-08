@@ -97,7 +97,8 @@ etc.
 		});
 	};
 	
-	// Populate passed object with properties in passed data object
+	// Parse data for properties necessry for embed. Width and height are common
+	// to all media.
 	Provider.prototype.parseData = function(data) {
 		var parsedData = {};
 		parsedData.width = parseInt(data.width);
@@ -105,11 +106,11 @@ etc.
 		return parsedData;
 	}
 	
-	// Validate parsed data, failing on any NaN or empty string values
+	// Validate parsed data, failing on any NaN numbers or undefined values
 	Provider.prototype.validateData = function(parsedData) {
 		for(var property in parsedData) {
 			var value = parsedData[property];
-			if(isNaN(value) || value === "") {
+			if((typeof value === "number" && isNaN(value)) || typeof value === "undefined") {
 				return false;
 			}
 		}
@@ -120,10 +121,14 @@ etc.
 	Provider.prototype.onJson = function(data, anchor) {
 		var parsedData = this.parseData(data);
 		if(this.validateData(parsedData)) {
-			log(parsedData);
-		};
+			this.render(parsedData, anchor);
+		}
 		return parsedData;
 	};
+	
+	Provider.prototype.render = function(parsedData, anchor) {
+		console.log(parsedData);
+	}
 	
 	// Flickr extends Provider
 	function Flickr(urlSchemeStart) {
@@ -132,20 +137,18 @@ etc.
 	}
 	extend(Provider, Flickr);
 	
-	// Flickr specialises parse data to look for the image url
+	// Specialises parseData to look for the image url
 	Flickr.prototype.parseData = function(data) {
 		var parsedData = this.super_.parseData.call(this, data);
+		parsedData.url = data.url;
 		return parsedData;
 	}
 	
-	Flickr.prototype.onJson = function(data, anchor) {
-		var parsedData = this.super_.onJson.call(this, data, anchor);
-		if(this.validateData(parsedData)) {
-			anchor.replaceWith(
-				// Todo: sanity check data
-				'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + data.url + '"/>'
-			);
-		}
+	// Specialise render to show image
+	Flickr.prototype.render = function(parsedData, anchor) {
+		anchor.replaceWith(
+			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.url + '"/>'
+		);
 	};
 	
 	// VideoProvider extends Provider
