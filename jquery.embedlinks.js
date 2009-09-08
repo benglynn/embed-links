@@ -29,7 +29,7 @@ as the provider is queried via an ajax request to glean the necessary data.
  */
  
 /*jslint browser: true, rhino: true, newcap: true */
- /*globals jQuery, window, escape */
+ /*globals jQuery, swfobject, window, escape */
 
 /*
 Todo: Redo matching of oembed formats. Deal with different url schemes, e.g:
@@ -66,6 +66,7 @@ etc.
 			console.log(arguments[0].toString());
 		}
 	}
+	log(); // Use at least once for JSLint
 	
 	// Provider class 
 	function Provider(urlSchemeStart) {
@@ -101,21 +102,23 @@ etc.
 	// to all media.
 	Provider.prototype.parseData = function(data) {
 		var parsedData = {};
-		parsedData.width = parseInt(data.width);
-		parsedData.height = parseInt(data.height);
+		parsedData.width = parseInt(data.width, 10);
+		parsedData.height = parseInt(data.height, 10);
 		return parsedData;
-	}
+	};
 	
 	// Validate parsed data, failing on any NaN numbers or undefined values
 	Provider.prototype.validateData = function(parsedData) {
 		for(var property in parsedData) {
-			var value = parsedData[property];
-			if((typeof value === "number" && isNaN(value)) || typeof value === "undefined") {
-				return false;
+			if(parsedData.hasOwnProperty(property)) {
+				var value = parsedData[property];
+				if((typeof value === "number" && isNaN(value)) || typeof value === "undefined") {
+					return false;
+				}
 			}
 		}
 		return true;
-	}
+	};
 	
 	// Handle data returned from a request
 	Provider.prototype.onJson = function(data, anchor) {
@@ -128,7 +131,7 @@ etc.
 	
 	Provider.prototype.render = function(parsedData, anchor) {
 		console.log(parsedData);
-	}
+	};
 	
 	// Flickr extends Provider
 	function Flickr(urlSchemeStart) {
@@ -142,7 +145,7 @@ etc.
 		var parsedData = this.super_.parseData.call(this, data);
 		parsedData.url = data.url;
 		return parsedData;
-	}
+	};
 	
 	// Specialise render to show image
 	Flickr.prototype.render = function(parsedData, anchor) {
@@ -164,13 +167,13 @@ etc.
 		parsedData.thumbnail_url = data.thumbnail_url;
 		parsedData.flashSrc = undefined;
 		
-		// If data has an html property and it is a Flash object or embed tag
-		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/) != null) {
+		// If data has an html property and it is a Flash object/embed element
+		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/) !== null) {
 			// Set the flash src to be the src/data attribute
 			parsedData.flashSrc = data.html.match(/^<(?:object|embed).*?(?:src|data)=(?:"|')([^'"]*?)(?:"|')/)[1];
 		}
 		return parsedData;
-	}
+	};
 	
 	// Video specialised render
 	VideoProvider.prototype.render = function(parsedData, anchor) {
@@ -191,9 +194,10 @@ etc.
 					allowfullscreen: "true"
 				},
 				{id:uid + '_id'}
-			)
+			);
 		}
-		// If Flash is not available, anchor wraps thumbnail, at width and height of movie
+		// If Flash is not available, anchor wraps thumbnail, at width and 
+		// height of movie
 		else {
 			anchor.html('<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>');
 		}
