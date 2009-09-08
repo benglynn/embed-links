@@ -40,7 +40,7 @@ etc.
 (function($) {
 
 	// Constants
-	var FLASH_VERSION_REQUIRED = 8;
+	var FLASH_VERSION_REQUIRED = "8.0.0";
 	
 	// Default properties
 	var defaultOptions = {
@@ -157,18 +157,46 @@ etc.
 	}
 	extend(Provider, VideoProvider);
 	
-	// Specialises parseData to look for thumbnail_url
+	// Specialises parseData to look for thumbnail_url and html
 	VideoProvider.prototype.parseData = function(data) {
 		var parsedData = this.super_.parseData.call(this, data);
+		
 		parsedData.thumbnail_url = data.thumbnail_url;
+		parsedData.flashSrc = undefined;
+		
+		// If data has an html property and it is a Flash object or embed tag
+		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/) != null) {
+			// Set the flash src to be the src/data attribute
+			parsedData.flashSrc = data.html.match(/^<(?:object|embed).*?(?:src|data)=(?:"|')([^'"]*?)(?:"|')/)[1];
+		}
 		return parsedData;
 	}
 	
 	// Video specialised render
 	VideoProvider.prototype.render = function(parsedData, anchor) {
-		anchor.html(
-			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>'
-		);
+		if(swfobject && swfobject.hasFlashPlayerVersion(FLASH_VERSION_REQUIRED)) {
+			// Get reference to anchor id, create if necessary
+			var uid = anchor.attr('id') === '' ? Math.random().toString().replace(/^0\./,'jquery_embedlinks_') : anchor.attr('id');
+			anchor.attr('id', uid);
+			swfobject.embedSWF(
+				parsedData.flashSrc, 
+				uid,
+				parsedData.width + '',
+				parsedData.height + '',
+				FLASH_VERSION_REQUIRED,
+				null,
+				null,
+				{
+					allowScriptAccess: "always",
+					allowfullscreen: "true"
+				},
+				{id:uid + '_id'}
+			)
+		}
+		// If Flash is not available, anchor wraps thumbnail, at width and height of movie
+		else {
+			anchor.html('<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>');
+		}
 	};
 	
 	// Provider instances
