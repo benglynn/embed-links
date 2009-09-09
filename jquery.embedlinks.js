@@ -25,6 +25,18 @@ Todo: Turn these todos into tickets
 		maxwidth: 800,
 		maxheight: 800
 	};
+	
+	// Return dimensions maintaining aspect ratio
+	// separated for unit testing
+	function getDimensions(width, height, maxwidth, maxheight) {
+		if(width < maxwidth && height < maxheight) {
+			return [width, height];
+		}
+		else if(width > height) {
+			return [width*maxwidth/width, height*maxwidth/width];
+		}
+		else return [width*maxheight/height, height*maxheight/height];
+	}
 
 	// Utility to extend a class
 	function extend(SuperCon, SubCon) {
@@ -86,7 +98,8 @@ Todo: Turn these todos into tickets
 	};
 	
 	// Validate parsed data, failing on any NaN numbers or undefined values
-	Provider.prototype.validateData = function(parsedData) {
+	// and checking against any relevant options
+	Provider.prototype.validateData = function(parsedData, options) {
 		for(var property in parsedData) {
 			if(parsedData.hasOwnProperty(property)) {
 				var value = parsedData[property];
@@ -95,19 +108,24 @@ Todo: Turn these todos into tickets
 				}
 			}
 		}
+		// If necessary trim dimensions to comply with maxwidth and maxheight
+		var dimensions = getDimensions(parsedData.width, parsedData.height, options.maxwidth, options.maxheight);
+		parsedData.width = dimensions[0];
+		parsedData.height = dimensions[1];
+		
 		return true;
 	};
 	
 	// Handle data returned from a request
 	Provider.prototype.onJson = function(data, anchor, options) {
 		var parsedData = this.parseData(data);
-		if(this.validateData(parsedData)) {
-			this.render(parsedData, anchor, data, options);
+		if(this.validateData(parsedData, options)) {
+			this.render(parsedData, anchor, data);
 		}
 		return parsedData;
 	};
 	
-	Provider.prototype.render = function(parsedData, anchor, data, options) {
+	Provider.prototype.render = function(parsedData, anchor, data) {
 		//log(parsedData);
 	};
 	
@@ -126,9 +144,9 @@ Todo: Turn these todos into tickets
 	};
 	
 	// Specialise render to show image
-	Flickr.prototype.render = function(parsedData, anchor, data, options) {
+	Flickr.prototype.render = function(parsedData, anchor, data) {
 		anchor.replaceWith(
-			'<img width="' + Math.min(parsedData.width, options.maxwidth) + '" height="' + Math.min(parsedData.height, options.maxheight) + '" src="' + parsedData.url + '"/>'
+			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.url + '"/>'
 		);
 	};
 	
@@ -153,7 +171,7 @@ Todo: Turn these todos into tickets
 	};
 	
 	// Video specialised render
-	VideoProvider.prototype.render = function(parsedData, anchor, data, options) {
+	VideoProvider.prototype.render = function(parsedData, anchor, data) {
 	
 		if(swfobject && swfobject.hasFlashPlayerVersion(FLASH_VERSION_REQUIRED)) {
 		
@@ -175,8 +193,8 @@ Todo: Turn these todos into tickets
 			swfobject.embedSWF(
 				parsedData.flashSrc, 
 				uid,
-				Math.min(parsedData.width, options.maxwidth) + '',
-				Math.min(parsedData.height, options.maxheight) + '',
+				parsedData.width + '',
+				parsedData.height + '',
 				FLASH_VERSION_REQUIRED,
 				null,
 				null,
@@ -225,7 +243,6 @@ Todo: Turn these todos into tickets
 				var anchor = $(this);
 				var provider = getProvider(anchor.attr('href'));
 				if(provider !== null) {
-					console.log("Provider");
 					provider.embedLink(anchor, options);
 				}
 			}
