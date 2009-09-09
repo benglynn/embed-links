@@ -1,40 +1,18 @@
 /*
-
-About
-WORK IN PROGRESS
-
-Replaces anchors pointing to certain media with embedded media. The media must 
-be hosted with a proider that supports the oEmbed format http://www.oembed.com/, 
-as the provider is queried via an ajax request to glean the necessary data.
-
- * The raw html returned by the provider is not used directly, html is 
- consturcted from the metadata.
- 
- * Where Flash is required, SWFObject http://code.google.com/p/swfobject/ is 
- used to perform Flash detection and embed the media.
-   
- * If Flash is unavailable (either because SWFObject is unavailable of because 
- the system does not have Flash -- iPhone for example) then the video's 
- thumbnail (if available) is wrapped in a link to the video on the provider's 
- site.
-
- * A function is available which will identify anchors pointing to supported 
- media. (Alternatively, oembed can be called on a jQuery object.)
- 
- * The code passes the JSLint code quality tool http://www.jslint.com/
- 
- This plugin was developed by benglynn, the oEmbed ajax inspired by the jquery.
- oembed plugin http://plugins.jquery.com/project/jquery-oembed
- 
- */
+http://code.google.com/p/jquery-embedlinks/
+*/
  
 /*jslint browser: true, rhino: true, newcap: true */
+
  /*globals jQuery, swfobject, window, escape */
 
 /*
 Todo: Providers to have an additional param with less amiguous url scheme, to 
-test against hrefs and reduce unnecessay requests
-etc.
+      test against hrefs and reduce unnecessay requests
+Todo: Specialise YouTube and Vimeo providers (see todo below)
+Todo: Other endpoints
+Todo: Default options should default to no max and no min width
+Todo: Turn these todos into tickets
 */
 
 (function($) {
@@ -62,7 +40,7 @@ etc.
 			console.log.apply(this, arguments);
 		}
 		// Webkit must have one string
-		else if(window.console) {
+		else if(arguments[0] && window.console) {
 			console.log(arguments[0].toString());
 		}
 	}
@@ -94,7 +72,7 @@ etc.
 		var provider = this;
 		$.getJSON(url, function(data) {
 			// Callback
-			provider.onJson(data, anchor);
+			provider.onJson(data, anchor, options);
 		});
 	};
 	
@@ -121,15 +99,15 @@ etc.
 	};
 	
 	// Handle data returned from a request
-	Provider.prototype.onJson = function(data, anchor) {
+	Provider.prototype.onJson = function(data, anchor, options) {
 		var parsedData = this.parseData(data);
 		if(this.validateData(parsedData)) {
-			this.render(parsedData, anchor, data);
+			this.render(parsedData, anchor, data, options);
 		}
 		return parsedData;
 	};
 	
-	Provider.prototype.render = function(parsedData, anchor, data) {
+	Provider.prototype.render = function(parsedData, anchor, data, options) {
 		//log(parsedData);
 	};
 	
@@ -148,9 +126,9 @@ etc.
 	};
 	
 	// Specialise render to show image
-	Flickr.prototype.render = function(parsedData, anchor, data) {
+	Flickr.prototype.render = function(parsedData, anchor, data, options) {
 		anchor.replaceWith(
-			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.url + '"/>'
+			'<img width="' + Math.min(parsedData.width, options.maxwidth) + '" height="' + Math.min(parsedData.height, options.maxheight) + '" src="' + parsedData.url + '"/>'
 		);
 	};
 	
@@ -175,7 +153,7 @@ etc.
 	};
 	
 	// Video specialised render
-	VideoProvider.prototype.render = function(parsedData, anchor, data) {
+	VideoProvider.prototype.render = function(parsedData, anchor, data, options) {
 	
 		if(swfobject && swfobject.hasFlashPlayerVersion(FLASH_VERSION_REQUIRED)) {
 		
@@ -197,8 +175,8 @@ etc.
 			swfobject.embedSWF(
 				parsedData.flashSrc, 
 				uid,
-				parsedData.width + '',
-				parsedData.height + '',
+				Math.min(parsedData.width, options.maxwidth) + '',
+				Math.min(parsedData.height, options.maxheight) + '',
 				FLASH_VERSION_REQUIRED,
 				null,
 				null,
@@ -209,6 +187,7 @@ etc.
 		// If Flash is not available, anchor wraps thumbnail, at width and 
 		// height of movie
 		else {
+			// Todo: specialise this for YouTube and Vimeo, Qik doesn't supply a thumbnail
 			//anchor.html('<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>');
 		}
 	};
@@ -241,12 +220,12 @@ etc.
 	Plugin
 	*/
 	$.fn.embedLinks = function(options) {
-	
 		return this.each(function() {
 			if(this.nodeName === 'A') {
 				var anchor = $(this);
 				var provider = getProvider(anchor.attr('href'));
 				if(provider !== null) {
+					console.log("Provider");
 					provider.embedLink(anchor, options);
 				}
 			}
