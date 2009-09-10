@@ -9,10 +9,13 @@ http://code.google.com/p/jquery-embedlinks/
 /*
 Todo: Providers to have an additional param with less amiguous url scheme, to 
       test against hrefs and reduce unnecessay requests
-Todo: Specialise YouTube and Vimeo providers (see todo below)
+Todo: Specialise video providers with thumbnail to show image if no flash
 Todo: Other endpoints
 Todo: Default options should default to no max and no min width
 Todo: Turn these todos into tickets
+Todo: Consider adding Links class, or changing from Provider to Link class
+Todo: Add comment explaining how qs params are added, give youtube example
+Todo: talk about noembed in example
 */
 
 (function($) {
@@ -59,7 +62,8 @@ Todo: Turn these todos into tickets
 	log(); // Use at least once for JSLint
 	
 	// Provider class 
-	function Provider(urlSchemeStart) {
+	function Provider(id, urlSchemeStart) {
+		this.id = id;
 		this.urlSchemeStart = urlSchemeStart;
 		this.apiEndPoint = 'http://oohembed.com/oohembed/';
 	}
@@ -120,18 +124,18 @@ Todo: Turn these todos into tickets
 	Provider.prototype.onJson = function(data, anchor, options) {
 		var parsedData = this.parseData(data);
 		if(this.validateData(parsedData, options)) {
-			this.render(parsedData, anchor, data);
+			this.render(parsedData, anchor, data, options);
 		}
 		return parsedData;
 	};
 	
-	Provider.prototype.render = function(parsedData, anchor, data) {
+	Provider.prototype.render = function(parsedData, anchor, data, options) {
 		//log(parsedData);
 	};
 	
 	// Flickr extends Provider
-	function Flickr(urlSchemeStart) {
-		Provider.call(this, urlSchemeStart);
+	function Flickr(id, urlSchemeStart) {
+		Provider.call(this, id, urlSchemeStart);
 		//this.apiEndPoint = 'http://flickr.com/services/oembed/';
 	}
 	extend(Provider, Flickr);
@@ -144,19 +148,19 @@ Todo: Turn these todos into tickets
 	};
 	
 	// Specialise render to show image
-	Flickr.prototype.render = function(parsedData, anchor, data) {
+	Flickr.prototype.render = function(parsedData, anchor, data, options) {
 		anchor.replaceWith(
 			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.url + '"/>'
 		);
 	};
 	
 	// VideoProvider extends Provider
-	function VideoProvider(urlSchemeStart) {
-		Provider.call(this, urlSchemeStart);
+	function VideoProvider(id, urlSchemeStart) {
+		Provider.call(this, id, urlSchemeStart);
 	}
 	extend(Provider, VideoProvider);
 	
-	// Specialises parseData to look for thumbnail_url and html
+	// Specialises parseData to look for html
 	VideoProvider.prototype.parseData = function(data) {
 		var parsedData = this.super_.parseData.call(this, data);
 		
@@ -171,7 +175,7 @@ Todo: Turn these todos into tickets
 	};
 	
 	// Video specialised render
-	VideoProvider.prototype.render = function(parsedData, anchor, data) {
+	VideoProvider.prototype.render = function(parsedData, anchor, data, options) {
 	
 		if(swfobject && swfobject.hasFlashPlayerVersion(FLASH_VERSION_REQUIRED)) {
 		
@@ -189,9 +193,22 @@ Todo: Turn these todos into tickets
 				});
 			}
 			
+			// If querystring params in options, add these to flash url
+			var qsObj = options[this.id + "_querystring"];
+			var flashSrc = parsedData.flashSrc;
+			if(qsObj !== undefined) {
+				// Add initial ? unless already a qs, then add &
+				flashSrc += (flashSrc.match(/\?/) === null) ? "?" : "&";
+				$.each(qsObj, function(name, value) {
+					flashSrc += name + "=" + value + "&";
+				});
+				// Remove superfluous &
+				flashSrc = flashSrc.replace(/&$/,'');
+			}
+			
 			// Embed the swf
 			swfobject.embedSWF(
-				parsedData.flashSrc, 
+				flashSrc,
 				uid,
 				parsedData.width + '',
 				parsedData.height + '',
@@ -199,29 +216,21 @@ Todo: Turn these todos into tickets
 				null,
 				null,
 				extractedParams,
+				// todo: why the next line?
 				{id:uid + '_id'}
 			);
-		}
-		// If Flash is not available, anchor wraps thumbnail, at width and 
-		// height of movie
-		else {
-			// Todo: specialise this for YouTube and Vimeo, Qik doesn't supply a thumbnail
-			//anchor.html('<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.thumbnail_url + '"/>');
 		}
 	};
 	
 	
 	
+	
 	// Provider instances
 	var providers = [
-		// YouTube
-		new VideoProvider('http://www.youtube.com/watch?v='),
-		// Vimeo
-		new VideoProvider('http://vimeo.com/'),
-		// flickr
-		new Flickr('http://www.flickr.com/photos/'),
-		// Qik
-		new VideoProvider('http://qik.com/')
+		new VideoProvider('youtube', 'http://www.youtube.com/watch?v='),
+		new VideoProvider('vimeo', 'http://vimeo.com/'),
+		new Flickr('flickr', 'http://www.flickr.com/photos/'),
+		new VideoProvider('qik', 'http://qik.com/')
 	];
 	
 	// Match a provider to the passed url

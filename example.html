@@ -14,16 +14,19 @@
 					$(this).embedLinks();
 				});
 				*/
-				$.embedLinks({maxwidth:800, maxheight:800});
+				$.embedLinks({
+					maxwidth:800,
+					maxheight:800,
+					youtube_querystring:{rel:0}
+				});
 			});
 		</script>
 	</head>
 	<body>
-		<p>Todo: provide examples of noembed</p>
+		<p><a href="http://www.youtube.com/watch?v=W8wjCGQhhRI">A YouTube viedo</a></p>
 		<p><a href="http://qik.com/video/2438650">A Qik video</a></p>
 		<p><a href="http://www.flickr.com/photos/">A link to flickr</a></p>
 		<p><a href="http://vimeo.com/3108686" class="oembed">Vimeo Video</a></p>
-		<p><a href="http://www.youtube.com/watch?v=-GEYOE0h7IA">A YouTube viedo</a></p>
 		<p><a href="http://vimeo.com/4868843">A Vimeo video</a></p>
 		<p><a href="http://www.vimeo.com/groups/future/videos/5797015">A vimeo group video</a></p>
 		<p><a href="http://www.flickr.com/photos/14516334@N00/345009210/">Flickr Image</a></p>
