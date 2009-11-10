@@ -16,6 +16,7 @@ Todo: Turn these todos into tickets
 Todo: Consider adding Links class, or changing from Provider to Link class
 Todo: Add comment explaining how qs params are added, give youtube example
 Todo: talk about noembed in example
+Todo: Full screen forced, make come from options (see below todo)
 */
 
 (function($) {
@@ -45,7 +46,8 @@ Todo: talk about noembed in example
 	function extend(SuperCon, SubCon) {
 		SubCon.prototype = new SuperCon();
 		// Superclass will be available as super_ in subclass
-		SubCon.prototype.super_ = SuperCon.prototype;
+		// Todo: This does not work, stack overflow. Why?
+		//SubCon.prototype.super_ = SuperCon.prototype;
 	}
 
 	// log checks for existance of console
@@ -116,6 +118,10 @@ Todo: talk about noembed in example
 		var dimensions = getDimensions(parsedData.width, parsedData.height, options.maxwidth, options.maxheight);
 		parsedData.width = dimensions[0];
 		parsedData.height = dimensions[1];
+		// Todo: Is this messy,? Should be specific to id?? Document
+		if(options.controlerHeight) {
+			parsedData.height += options.controlerHeight;
+		}
 		
 		return true;
 	};
@@ -142,7 +148,7 @@ Todo: talk about noembed in example
 	
 	// Specialises parseData to look for the image url
 	Flickr.prototype.parseData = function(data) {
-		var parsedData = this.super_.parseData.call(this, data);
+		var parsedData = Provider.prototype.parseData.call(this, data);
 		parsedData.url = data.url;
 		return parsedData;
 	};
@@ -162,7 +168,7 @@ Todo: talk about noembed in example
 	
 	// Specialises parseData to look for html
 	VideoProvider.prototype.parseData = function(data) {
-		var parsedData = this.super_.parseData.call(this, data);
+		var parsedData = Provider.prototype.parseData.call(this, data);
 		
 		parsedData.flashSrc = undefined;
 		
@@ -192,6 +198,9 @@ Todo: talk about noembed in example
 					extractedParams[matchedParamTag[1]] = matchedParamTag[2];
 				});
 			}
+			// Todo: This value should come from options, not be forced
+			extractedParams.allowFullScreen = "true";
+
 			
 			// If querystring params in options, add these to flash url
 			var qsObj = options[this.id + "_querystring"];
@@ -223,11 +232,25 @@ Todo: talk about noembed in example
 	};
 	
 	
+	// YouTube provider extends video provider
+	
+	// VideoProvider extends Provider
+	function YouTubeProvider(id, urlSchemeStart) {
+		VideoProvider.call(this, id, urlSchemeStart);
+	}
+	extend(VideoProvider, YouTubeProvider);
+	
+	// Specialise onJson to force a width and height
+	YouTubeProvider.prototype.onJson = function(data, anchor, options) {
+		data.width = 640;
+		data.height = 360;
+		VideoProvider.prototype.onJson(data, anchor, options);
+	}
 	
 	
 	// Provider instances
 	var providers = [
-		new VideoProvider('youtube', 'http://www.youtube.com/watch?v='),
+		new YouTubeProvider('youtube', 'http://www.youtube.com/watch?v='),
 		new VideoProvider('vimeo', 'http://vimeo.com/'),
 		new Flickr('flickr', 'http://www.flickr.com/photos/'),
 		new VideoProvider('qik', 'http://qik.com/')
@@ -247,6 +270,9 @@ Todo: talk about noembed in example
 	Plugin
 	*/
 	$.fn.embedLinks = function(options) {
+		if(navigator.appVersion.match(/MSIE 6/) != null) {
+			reurn;
+		}
 		return this.each(function() {
 			if(this.nodeName === 'A') {
 				var anchor = $(this);
