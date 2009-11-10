@@ -271,7 +271,7 @@ Todo: Full screen forced, make come from options (see below todo)
 	*/
 	$.fn.embedLinks = function(options) {
 		if(navigator.appVersion.match(/MSIE 6/) != null) {
-			reurn;
+			return;
 		}
 		return this.each(function() {
 			if(this.nodeName === 'A') {
