@@ -72,7 +72,7 @@ Todo: Full screen forced, make come from options (see below todo)
 	
 	// Return true if the provider handles the passed url, false otherwise
 	Provider.prototype.handlesUrl = function(url) {
-		return url.indexOf(this.urlSchemeStart) === 0;
+		return url.indexOf(this.urlSchemeStart) === 0 || url.indexOf(this.urlSchemeStart.match(/^http:\/\/www\./) ? 'http://' + this.urlSchemeStart.substring(11) : 'http://www.' + this.urlSchemeStart.substring(7)) === 0;
 	};
 	
 	// Embed media in place of an anchor
@@ -192,7 +192,6 @@ Todo: Full screen forced, make come from options (see below todo)
 		var parsedData = Provider.prototype.parseData.call(this, data);
 		
 		parsedData.flashSrc = undefined;
-
 		// If data has an html property and it is a Flash object/embed element
 		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/i) !== null) {
 			// Set the flash src to be the src/data attribute
@@ -312,7 +311,9 @@ Todo: Full screen forced, make come from options (see below todo)
 	$.embedLinks = function(options) {
 		var cssPath = '';
 		$.each(providers, function(i, provider) {
-			cssPath += 'a[href^=' + provider.urlSchemeStart + ']';
+			cssPath += 'a[href^=' + provider.urlSchemeStart + '], ';
+			// match urls on www or non-www
+			cssPath += provider.urlSchemeStart.match(/^http:\/\/www\./) ? 'a[href^=http://' + provider.urlSchemeStart.substring(11) + ']' : 'a[href^=http://www.' + provider.urlSchemeStart.substring(7) + ']'
 			if(i < providers.length - 1) {
 				cssPath += ',';
 			}
