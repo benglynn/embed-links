@@ -159,7 +159,28 @@ Todo: Full screen forced, make come from options (see below todo)
 			'<img width="' + parsedData.width + '" height="' + parsedData.height + '" src="' + parsedData.url + '"/>'
 		);
 	};
+
+	// iFrameProvider extends Provider
+	function iFrameProvider(id, urlSchemeStart) {
+		Provider.call(this, id, urlSchemeStart);
+	}
+	extend(Provider, iFrameProvider);
 	
+	// Parse data for properties necessry for embed. Iframes only need html code
+	iFrameProvider.prototype.parseData = function(data) {
+	    var parsedData = Provider.prototype.parseData.call(this, data);
+	    if(data.html && data.html.match(/^<iframe/))
+	    {
+	        parsedData.html = data.html;
+	    }
+		return parsedData;
+	};
+
+	// iFrameProvider specialised render
+	iFrameProvider.prototype.render = function(parsedData, anchor, data, options) {
+        parsedData.html && anchor.after(parsedData.html).remove()
+    }
+
 	// VideoProvider extends Provider
 	function VideoProvider(id, urlSchemeStart) {
 		Provider.call(this, id, urlSchemeStart);
@@ -171,7 +192,7 @@ Todo: Full screen forced, make come from options (see below todo)
 		var parsedData = Provider.prototype.parseData.call(this, data);
 		
 		parsedData.flashSrc = undefined;
-		
+
 		// If data has an html property and it is a Flash object/embed element
 		if(data.html && data.html.match(/^<(?:object|embed).*?type=(?:\"|')application\/x-shockwave-flash(?:\"|')/i) !== null) {
 			// Set the flash src to be the src/data attribute
@@ -251,7 +272,7 @@ Todo: Full screen forced, make come from options (see below todo)
 	// Provider instances
 	var providers = [
 		new YouTubeProvider('youtube', 'http://www.youtube.com/watch?v='),
-		new VideoProvider('vimeo', 'http://vimeo.com/'),
+		new iFrameProvider('vimeo', 'http://vimeo.com/'),
 		new Flickr('flickr', 'http://www.flickr.com/photos/'),
 		new VideoProvider('qik', 'http://qik.com/')
 	];
