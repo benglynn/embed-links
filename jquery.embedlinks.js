@@ -206,7 +206,7 @@ Todo: Full screen forced, make come from options (see below todo)
 		if(swfobject && swfobject.hasFlashPlayerVersion(FLASH_VERSION_REQUIRED)) {
 		
 			// Get reference to anchor id, create if necessary
-			var uid = anchor.attr('id') === '' ? Math.random().toString().replace(/^0\./,'jquery_embedlinks_') : anchor.attr('id');
+			var uid = anchor.attr('id') ? anchor.attr('id') : Math.random().toString().replace(/^0\./,'jquery_embedlinks_');
 			anchor.attr('id', uid);
 			
 			// Extract any params found in the data
