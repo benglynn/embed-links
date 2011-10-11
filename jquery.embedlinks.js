@@ -311,9 +311,9 @@ Todo: Full screen forced, make come from options (see below todo)
 	$.embedLinks = function(options) {
 		var cssPath = '';
 		$.each(providers, function(i, provider) {
-			cssPath += 'a[href^=' + provider.urlSchemeStart + '], ';
+			cssPath += 'a[href^=\'' + provider.urlSchemeStart + '\'], ';
 			// match urls on www or non-www
-			cssPath += provider.urlSchemeStart.match(/^http:\/\/www\./) ? 'a[href^=http://' + provider.urlSchemeStart.substring(11) + ']' : 'a[href^=http://www.' + provider.urlSchemeStart.substring(7) + ']'
+			cssPath += provider.urlSchemeStart.match(/^http:\/\/www\./) ? 'a[href^=\'http://' + provider.urlSchemeStart.substring(11) + '\']' : 'a[href^=\'http://www.' + provider.urlSchemeStart.substring(7) + '\']'
 			if(i < providers.length - 1) {
 				cssPath += ',';
 			}
