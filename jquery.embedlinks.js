@@ -27,7 +27,8 @@ Todo: Full screen forced, make come from options (see below todo)
 	// Default properties
 	var defaultOptions = {
 		maxwidth: 800,
-		maxheight: 800
+		maxheight: 800,
+		apiKey: ''
 	};
 	
 	// Return dimensions maintaining aspect ratio
@@ -67,7 +68,7 @@ Todo: Full screen forced, make come from options (see below todo)
 	function Provider(id, urlSchemeStart) {
 		this.id = id;
 		this.urlSchemeStart = urlSchemeStart;
-		this.apiEndPoint = 'http://oohembed.com/oohembed/';
+		this.apiEndPoint = 'http://api.embed.ly/1/oembed';
 	}
 	
 	// Return true if the provider handles the passed url, false otherwise
@@ -84,6 +85,7 @@ Todo: Full screen forced, make come from options (see below todo)
 			'&format=json' + 
 			'&maxwidth=' + options.maxwidth + 
 			'&maxheight=' + options.maxheight + 
+      '&key=' + options.apiKey +
 			// jQuery changes ? for a jsonp callback
 			'&callback=?';
 			
@@ -270,7 +272,7 @@ Todo: Full screen forced, make come from options (see below todo)
 	
 	// Provider instances
 	var providers = [
-		new YouTubeProvider('youtube', 'http://www.youtube.com/watch?v='),
+		new iFrameProvider('youtube', 'http://www.youtube.com/watch?v='),
 		new iFrameProvider('vimeo', 'http://vimeo.com/'),
 		new Flickr('flickr', 'http://www.flickr.com/photos/'),
 		new VideoProvider('qik', 'http://qik.com/')
